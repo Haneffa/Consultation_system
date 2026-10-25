@@ -329,30 +329,44 @@
         async function syncData() {
             try {
                 document.getElementById('sync-status').innerText = "🔄 Menyegerak...";
-                const response = await fetch(GOOGLE_SCRIPT_URL);
+                
+                // Tambah timestamp pada URL untuk paksa browser elak simpan cache lama
+                const nocacheUrl = `${GOOGLE_SCRIPT_URL}?t=${new Date().getTime()}`;
+                const response = await fetch(nocacheUrl);
                 const data = await response.json();
                 
                 bookingsDB = {}; 
                 
                 // Susun data dari Google Sheets masuk ke sistem
-                data.forEach(row => {
-                    const dbKey = `${row.Tarikh}_${row.Masa}`;
-                    
-                    if (row.Jenis === 'deleted') {
-                        delete bookingsDB[dbKey]; // Jika dibatalkan, padam slot
-                    } else {
-                        bookingsDB[dbKey] = {
-                            key: dbKey,
-                            isBooked: true,
-                            type: row.Jenis,
-                            studentName: row.Nama,
-                            phone: row.Telefon,
-                            reason: row.Tujuan,
-                            mode: row.Mod,
-                            createdAt: row.Timestamp
-                        };
-                    }
-                });
+                if (data && data.length > 0) {
+                    data.forEach(row => {
+                        let rawDate = row.Tarikh;
+                        let safeDateStr = rawDate;
+                        
+                        // Perbaiki format tarikh jika Google Sheets menukarnya ke format ISO secara automatik
+                        if (rawDate && String(rawDate).includes('T')) {
+                            const d = new Date(rawDate);
+                            safeDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                        }
+
+                        const dbKey = `${safeDateStr}_${row.Masa}`;
+                        
+                        if (row.Jenis === 'deleted') {
+                            delete bookingsDB[dbKey]; // Jika dibatalkan, padam slot
+                        } else {
+                            bookingsDB[dbKey] = {
+                                key: dbKey,
+                                isBooked: true,
+                                type: row.Jenis,
+                                studentName: row.Nama,
+                                phone: row.Telefon,
+                                reason: row.Tujuan,
+                                mode: row.Mod,
+                                createdAt: row.Timestamp
+                            };
+                        }
+                    });
+                }
                 
                 renderSlots();
                 document.getElementById('sync-status').innerText = "✅ Data Terkini";
@@ -365,9 +379,10 @@
 
         async function saveToGoogleSheets(payload) {
             try {
-                // Post data ke Google Sheets 
+                // Post data ke Google Sheets dengan mode 'no-cors' untuk elak ralat
                 fetch(GOOGLE_SCRIPT_URL, {
                     method: 'POST',
+                    mode: 'no-cors',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify(payload)
                 });
@@ -482,7 +497,7 @@
 
         function toggleLeave() {
             isOnLeave = !isOnLeave;
-            localStorage.setItem('sembangsiswa_leave', isOnLeave); // Cuti simpan di browser pensyarah
+            localStorage.setItem('sembangsiswa_leave', isOnLeave); 
             updateLeaveUI();
             renderSlots();
         }
@@ -734,7 +749,7 @@
             
             renderSlots();
             closeModal('event-modal');
-            saveToGoogleSheets(payload); // Simpan ke Google Sheets
+            saveToGoogleSheets(payload); 
             showMsg("🔒 Berjaya Dikunci", `Slot ${currentSelectedTime} pada ${selectedDateStr} telah ditutup untuk <b>${eventName}</b>.`, "bg-indigo-300");
         }
 
@@ -745,9 +760,8 @@
             
             document.getElementById('btn-confirm-delete').onclick = () => {
                 const dbKey = `${selectedDateStr}_${time}`;
-                delete bookingsDB[dbKey]; // Padam dari UI
+                delete bookingsDB[dbKey]; 
                 
-                // Beritahu Google Sheets untuk padam (overwrite dengan status 'deleted')
                 const payload = {
                     tarikh: selectedDateStr, masa: time, nama: "-", telefon: "-",
                     tujuan: "Dibatalkan", mod: "-", jenis: "deleted"
@@ -793,7 +807,7 @@
                 telefon: phone, tujuan: reason, mod: mode, jenis: finalType
             };
 
-            saveToGoogleSheets(payload); // Simpan ke awan
+            saveToGoogleSheets(payload); 
             renderSlots();
             closeModal('booking-modal');
             
