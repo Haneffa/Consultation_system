@@ -54,7 +54,10 @@
             <div class="text-4xl">🚀</div>
             <div>
                 <h1 class="font-extrabold text-2xl tracking-tight text-fuchsia-600">Sembang<span class="text-cyan-500">Siswa.</span></h1>
-                <p class="text-xs font-semibold text-gray-500">Sistem Tempahan Konsultasi (Sesi 20 Minit)</p>
+                <p class="text-xs font-semibold text-gray-500 flex items-center gap-2">
+                    Sistem Tempahan Konsultasi 
+                    <span id="sync-status" class="text-cyan-600 font-bold ml-2">🔄 Menyegerak...</span>
+                </p>
             </div>
         </div>
         
@@ -78,7 +81,7 @@
                     <ul class="space-y-2 text-sm md:text-base font-bold text-gray-700">
                         <li class="flex items-start gap-2">
                             <span>⏱️</span>
-                            <span>Setiap sesi terhad kepada <span class="bg-yellow-300 px-2 py-0.5 rounded-md border-2 border-gray-900 text-gray-900">20 minit</span> sahaja. Waktu 8:30 AM - 4:00 PM.</span>
+                            <span>Setiap sesi terhad kepada <span class="bg-yellow-300 px-2 py-0.5 rounded-md border-2 border-gray-900 text-gray-900">20 minit</span> sahaja.</span>
                         </li>
                         <li class="flex items-start gap-2">
                             <span>🎓</span>
@@ -139,6 +142,9 @@
                 <button id="btn-cuti" onclick="window.toggleLeave()" class="w-full bg-rose-400 hover:bg-rose-500 text-gray-900 border-4 border-gray-900 font-extrabold text-lg py-4 px-6 rounded-xl dopamine-box transition-colors flex items-center justify-center gap-2">
                     🌴 Bekukan Kalendar (Cuti)
                 </button>
+                <button onclick="window.syncData()" class="w-full bg-cyan-300 hover:bg-cyan-400 text-gray-900 border-4 border-gray-900 font-extrabold text-lg py-3 px-6 rounded-xl dopamine-box transition-colors flex items-center justify-center gap-2">
+                    🔄 Segar Semula Data
+                </button>
             </div>
         </div>
 
@@ -175,11 +181,6 @@
                     <input type="text" id="student-name" required class="w-full bg-gray-50 border-2 border-gray-900 rounded-xl p-3 focus:outline-none focus:bg-yellow-50 focus:border-cyan-500 font-semibold" placeholder="Contoh: Ali bin Abu">
                 </div>
 
-                <div class="mb-4">
-                    <label class="block font-bold text-gray-700 mb-1">No. Telefon (Opsional) 📱</label>
-                    <input type="text" id="student-phone" class="w-full bg-gray-50 border-2 border-gray-900 rounded-xl p-3 focus:outline-none focus:bg-yellow-50 focus:border-cyan-500 font-semibold" placeholder="Contoh: 0123456789">
-                </div>
-
                 <div class="mb-4 hidden" id="normal-reason-container">
                     <label class="block font-bold text-gray-700 mb-1">Tujuan Jumpa 💬</label>
                     <input type="text" id="normal-reason" class="w-full bg-gray-50 border-2 border-gray-900 rounded-xl p-3 focus:outline-none focus:bg-yellow-50 focus:border-cyan-500 font-semibold" placeholder="Bincang Bab 2 / Semak Draf">
@@ -209,8 +210,8 @@
                     </div>
                 </div>
 
-                <button type="submit" class="w-full bg-emerald-400 hover:bg-emerald-300 text-gray-900 font-extrabold text-lg py-3 rounded-xl dopamine-box flex justify-center items-center gap-2">
-                    Sedia Teks Telegram ✈️
+                <button type="submit" id="btn-submit-booking" class="w-full bg-emerald-400 hover:bg-emerald-300 text-gray-900 font-extrabold text-lg py-3 rounded-xl dopamine-box flex justify-center items-center gap-2">
+                    Sahkan Tempahan 🚀
                 </button>
             </form>
         </div>
@@ -238,7 +239,7 @@
 
     <!-- Modal: Info/Message -->
     <div id="msg-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden flex-col justify-center items-center z-50 p-4">
-        <div class="bg-yellow-300 rounded-3xl p-8 max-w-sm w-full dopamine-static text-center">
+        <div class="bg-yellow-300 rounded-3xl p-8 max-w-sm w-full dopamine-static text-center relative">
             <div id="msg-icon" class="text-6xl mb-4">🎉</div>
             <h2 id="msg-title" class="text-2xl font-extrabold mb-2 text-gray-900">Berjaya!</h2>
             <div id="msg-desc" class="font-bold text-gray-800 mb-6">Sistem berjaya dikemaskini.</div>
@@ -289,9 +290,13 @@
         </div>
     </div>
 
-    <!-- SCRIPTS (Pure JavaScript, No Database dependency) -->
+    <!-- SCRIPTS -->
     <script>
-        // Data Struktur Masa 8:30 AM - 4:00 PM
+        // ======= KONFIGURASI GOOGLE SHEETS & TELEGRAM =======
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxNRY9_1N03_h7A98MkHfi0_-DwBZCXTOPbWT3XxPXLGuOpPmzVeOux4nG_ptGBhyVO/exec";
+        const lecturerTelegram = "HaneffaMG"; // ID Telegram Dr. Haneffa
+
+        // ======= STRUKTUR MASA =======
         const timeBlocks = [
             { time: "08:30 AM", period: "pagi" }, { time: "08:50 AM", period: "pagi" },
             { time: "09:10 AM", period: "pagi" }, { time: "09:30 AM", period: "pagi" },
@@ -317,16 +322,62 @@
         let selectedDateStr = formatDate(selectedDateObj); 
         let currentSelectedTime = null; 
         
-        // PANGKALAN DATA TEMPATAN (LOCAL STORAGE)
-        let bookingsDB = JSON.parse(localStorage.getItem('sembangsiswa_bookings')) || {}; 
+        let bookingsDB = {}; 
         let isOnLeave = localStorage.getItem('sembangsiswa_leave') === 'true'; 
 
-        function saveDB() {
-            localStorage.setItem('sembangsiswa_bookings', JSON.stringify(bookingsDB));
-            localStorage.setItem('sembangsiswa_leave', isOnLeave);
+        // ======= FUNGSI DATABASE (GOOGLE SHEETS) =======
+        async function syncData() {
+            try {
+                document.getElementById('sync-status').innerText = "🔄 Menyegerak...";
+                const response = await fetch(GOOGLE_SCRIPT_URL);
+                const data = await response.json();
+                
+                bookingsDB = {}; 
+                
+                // Susun data dari Google Sheets masuk ke sistem
+                data.forEach(row => {
+                    const dbKey = `${row.Tarikh}_${row.Masa}`;
+                    
+                    if (row.Jenis === 'deleted') {
+                        delete bookingsDB[dbKey]; // Jika dibatalkan, padam slot
+                    } else {
+                        bookingsDB[dbKey] = {
+                            key: dbKey,
+                            isBooked: true,
+                            type: row.Jenis,
+                            studentName: row.Nama,
+                            phone: row.Telefon,
+                            reason: row.Tujuan,
+                            mode: row.Mod,
+                            createdAt: row.Timestamp
+                        };
+                    }
+                });
+                
+                renderSlots();
+                document.getElementById('sync-status').innerText = "✅ Data Terkini";
+                setTimeout(() => document.getElementById('sync-status').innerText = "", 3000);
+            } catch (err) {
+                console.error("Gagal menyegerak dengan Google Sheets:", err);
+                document.getElementById('sync-status').innerText = "❌ Gagal Segerak";
+            }
         }
 
-        // Fungsi Tukar Peranan (Pelajar/Pensyarah)
+        async function saveToGoogleSheets(payload) {
+            try {
+                // Post data ke Google Sheets 
+                fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload)
+                });
+                // Tiada 'await' digunakan supaya UI tak sangkut (Optimistic UI Update)
+            } catch (err) {
+                console.error("Gagal simpan ke pangkalan data", err);
+            }
+        }
+
+        // ======= FUNGSI UI & KALENDAR =======
         function setRole(role) {
             currentRole = role;
             
@@ -355,7 +406,6 @@
             renderSlots();
         }
 
-        // Fungsi Kalendar
         function changeMonth(offset) {
             currentViewDate.setMonth(currentViewDate.getMonth() + offset);
             renderMonthCalendar();
@@ -432,12 +482,11 @@
 
         function toggleLeave() {
             isOnLeave = !isOnLeave;
-            saveDB();
+            localStorage.setItem('sembangsiswa_leave', isOnLeave); // Cuti simpan di browser pensyarah
             updateLeaveUI();
             renderSlots();
         }
 
-        // Melukis Jadual
         function renderSlots() {
             const grid = document.getElementById('calendar-grid');
             grid.innerHTML = '';
@@ -452,7 +501,6 @@
                 let reasonStr = "";
                 let isBooked = false;
 
-                // Logik Jadual (Boleh ubah suai jika perlu)
                 if ((dayOfWeek === 4 || dayOfWeek === 5) && tb.period === "pagi") { 
                     type = "class";
                     isBooked = true;
@@ -499,7 +547,6 @@
                         btn.onclick = () => window.openBookingModal(tb.time, type);
                     }
                 } else {
-                    // Lecturer View
                     if (type === 'event') {
                         btn.classList.add('bg-indigo-400', 'text-white', 'dopamine-box');
                         btn.innerHTML = `<span class="text-xl">${tb.time}</span><span class="text-xs mt-2 bg-white text-indigo-900 px-3 py-1 rounded-full border-2 border-gray-900 truncate w-full shadow-[1px_1px_0_0_#111827]">${reasonStr}</span>`;
@@ -531,7 +578,6 @@
             }
         }
 
-        // Summary Pelajar
         function renderBookingSummary() {
             const list = document.getElementById('booking-summary-list');
             if (!list) return;
@@ -591,7 +637,7 @@
             });
         }
 
-        // Modals Logic
+        // ======= FUNGSI MODAL =======
         function openBookingModal(time, type) {
             currentSelectedTime = time;
             document.getElementById('modal-time-info').innerText = `${selectedDateStr} | ${time} (20 Minit)`;
@@ -646,12 +692,12 @@
             modal.querySelector('#msg-desc').innerHTML = desc;
             
             const innerDiv = modal.querySelector('.text-center');
-            innerDiv.className = `${colorClass} rounded-3xl p-8 max-w-sm w-full dopamine-static text-center`;
+            innerDiv.className = `${colorClass} rounded-3xl p-8 max-w-sm w-full dopamine-static text-center relative`;
             
             const actionContainer = document.getElementById('msg-action-container');
             if (actionUrl) {
                 actionContainer.innerHTML = `
-                    <a href="${actionUrl}" target="_blank" onclick="window.closeModal('msg-modal')" class="w-full bg-blue-500 hover:bg-blue-400 text-white font-extrabold text-lg py-3 rounded-xl dopamine-box flex items-center justify-center gap-2 mb-3 shadow-[4px_4px_0_0_#111827]">
+                    <a href="${actionUrl}" target="_blank" onclick="window.closeModal('msg-modal')" class="w-full bg-blue-500 hover:bg-blue-400 text-white font-extrabold text-lg py-4 rounded-xl dopamine-box flex items-center justify-center gap-2 mb-3 shadow-[4px_4px_0_0_#111827]">
                         <span class="text-2xl">✈️</span> Buka Telegram Sekarang
                     </a>
                     <button onclick="window.closeModal('msg-modal')" class="w-full bg-gray-200 text-gray-800 hover:bg-gray-300 font-extrabold text-lg py-2 rounded-xl dopamine-box">
@@ -670,27 +716,28 @@
             modal.classList.add('flex');
         }
 
-        // Simpan Event
+        // ======= AKSI HANTAR/PADAM DATA =======
         function submitEvent(e) {
             e.preventDefault();
             const eventName = document.getElementById('event-name').value;
             const dbKey = `${selectedDateStr}_${currentSelectedTime}`;
 
+            const payload = {
+                tarikh: selectedDateStr, masa: currentSelectedTime, nama: "-", telefon: "-",
+                tujuan: eventName, mod: "-", jenis: "event"
+            };
+
             bookingsDB[dbKey] = {
-                key: dbKey,
-                type: 'event',
-                isBooked: true,
-                reason: eventName,
+                key: dbKey, isBooked: true, type: 'event', reason: eventName,
                 createdAt: new Date().toISOString()
             };
             
-            saveDB();
             renderSlots();
             closeModal('event-modal');
+            saveToGoogleSheets(payload); // Simpan ke Google Sheets
             showMsg("🔒 Berjaya Dikunci", `Slot ${currentSelectedTime} pada ${selectedDateStr} telah ditutup untuk <b>${eventName}</b>.`, "bg-indigo-300");
         }
 
-        // Padam Event
         function removeEvent(time) {
             const modal = document.getElementById('confirm-modal');
             modal.classList.remove('hidden');
@@ -698,20 +745,30 @@
             
             document.getElementById('btn-confirm-delete').onclick = () => {
                 const dbKey = `${selectedDateStr}_${time}`;
-                delete bookingsDB[dbKey];
-                saveDB();
+                delete bookingsDB[dbKey]; // Padam dari UI
+                
+                // Beritahu Google Sheets untuk padam (overwrite dengan status 'deleted')
+                const payload = {
+                    tarikh: selectedDateStr, masa: time, nama: "-", telefon: "-",
+                    tujuan: "Dibatalkan", mod: "-", jenis: "deleted"
+                };
+                saveToGoogleSheets(payload);
+                
                 renderSlots();
                 closeModal('confirm-modal');
             };
         }
 
-        // Simpan Booking & Telegram
         function submitBooking(e) {
             e.preventDefault();
             const dbKey = `${selectedDateStr}_${currentSelectedTime}`;
             
+            const btnSubmit = document.getElementById('btn-submit-booking');
+            btnSubmit.innerHTML = "⏳ Menghantar...";
+            btnSubmit.disabled = true;
+
             const name = document.getElementById('student-name').value;
-            const phone = document.getElementById('student-phone').value || "Tiada";
+            const phone = "Tiada";
             const mode = document.querySelector('input[name="meeting-mode"]:checked').value;
             
             const dayOfWeek = selectedDateObj.getDay(); 
@@ -725,69 +782,75 @@
             let reason = isUrgent ? "URGENT: " + document.getElementById('student-reason').value : document.getElementById('normal-reason').value;
             let finalType = isUrgent ? 'urgent_booked' : 'normal_booked';
 
+            // Optimistic Update UI
             bookingsDB[dbKey] = {
-                key: dbKey,
-                isBooked: true,
-                type: finalType,
-                studentName: name,
-                phone: phone,
-                reason: reason,
-                mode: mode,
-                createdAt: new Date().toISOString()
+                key: dbKey, isBooked: true, type: finalType, studentName: name,
+                phone: phone, reason: reason, mode: mode, createdAt: new Date().toISOString()
             };
 
-            saveDB();
+            const payload = {
+                tarikh: selectedDateStr, masa: currentSelectedTime, nama: name,
+                telefon: phone, tujuan: reason, mod: mode, jenis: finalType
+            };
+
+            saveToGoogleSheets(payload); // Simpan ke awan
             renderSlots();
             closeModal('booking-modal');
             
-            // Jana Telegram
-            const lecturerTelegram = "HaneffaMG"; 
+            btnSubmit.innerHTML = "Sahkan Tempahan 🚀";
+            btnSubmit.disabled = false;
             
+            // Jana Telegram Mesej
             let rawMsg = `Assalamualaikum Dr. Haneffa, saya ingin menempah slot konsultasi: \n\n`;
             rawMsg += `👤 *Nama:* ${name}\n`;
             rawMsg += `📅 *Tarikh:* ${selectedDateStr}\n`;
             rawMsg += `⏰ *Masa:* ${currentSelectedTime}\n`;
             rawMsg += `📍 *Mod:* ${mode}\n`;
             rawMsg += `💬 *Tujuan/Sebab:* ${reason}\n\n`;
-            rawMsg += `*(Saya turut sertakan gambar/screenshot jadual sistem di bawah mesej ini)*\n\n`;
+            rawMsg += `*(Sila rujuk gambar screenshot jadual di bawah)*\n\n`;
             rawMsg += `Terima kasih Dr! ✨`;
 
             let tgEncodedMsg = encodeURIComponent(rawMsg);
             const tgUrl = `https://t.me/${lecturerTelegram}?text=${tgEncodedMsg}`;
 
             const reminderDesc = `
-                <div class="mb-4 text-sm font-bold text-gray-800">
-                    Sistem telah menyusun teks untuk dihantar ke Telegram Dr. Haneffa.
-                </div>
-                <div class="bg-white/70 p-4 rounded-xl border-2 border-gray-900 mb-5 text-sm text-left shadow-[2px_2px_0_0_#111827]">
-                    <span class="text-rose-600 font-extrabold text-lg flex items-center gap-1">🚨 PENTING:</span><br>
-                    <span class="font-bold text-gray-800">Sila <b>Ambil Tangkap Layar (Screenshot)</b> jadual penuh ini sekarang sebagai bukti.
-                    <br><br>Sila hantarkan gambar tersebut bersama-sama dengan mesej Telegram.</span>
+                <div class="bg-white p-4 rounded-xl border-2 border-gray-900 mb-5 text-sm text-left shadow-[2px_2px_0_0_#111827]">
+                    <span class="text-rose-600 font-extrabold text-lg flex items-center gap-1">🚨 PENTING SEBELUM TEKAN:</span><br>
+                    <span class="font-bold text-gray-800">Sila ambil gambar tangkap layar <b>(Screenshot)</b> jadual penuh ini sekarang sebagai bukti.
+                    <br><br>Sila sertakan gambar tersebut bersama mesej di dalam Telegram nanti.</span>
                 </div>
             `;
 
-            showMsg("🎉 Tempahan Sedia Dihantar!", reminderDesc, "bg-emerald-300", tgUrl);
+            showMsg("🎉 Tempahan Direkod!", reminderDesc, "bg-emerald-300", tgUrl);
         }
 
         function cancelBooking() {
             if(!currentSelectedTime) return;
             const dbKey = `${selectedDateStr}_${currentSelectedTime}`;
             
-            delete bookingsDB[dbKey];
-            saveDB();
+            delete bookingsDB[dbKey]; // Padam dari UI
+            
+            // Beritahu Google Sheets untuk batal
+            const payload = {
+                tarikh: selectedDateStr, masa: currentSelectedTime, nama: "-", telefon: "-",
+                tujuan: "Dibatalkan", mod: "-", jenis: "deleted"
+            };
+            saveToGoogleSheets(payload);
+
             renderSlots();
             closeModal('details-modal');
             showMsg("❌ Dibatalkan", `Slot telah berjaya dikosongkan semula.`, "bg-rose-300");
         }
 
-        // Start App
+        // ======= START SYSTEM =======
         window.onload = () => {
             updateLeaveUI();
             renderMonthCalendar();
             renderSlots();
+            syncData(); // Tarik data dari Google Sheets semasa page buka
         };
 
-        // Ekspot fungsi ke global (window)
+        // Export functions
         window.setRole = setRole;
         window.changeMonth = changeMonth;
         window.selectDate = selectDate;
@@ -800,6 +863,7 @@
         window.closeModal = closeModal;
         window.submitBooking = submitBooking;
         window.cancelBooking = cancelBooking;
+        window.syncData = syncData;
     </script>
 </body>
 </html>
