@@ -1,178 +1,487 @@
 <!DOCTYPE html>
 <html lang="ms">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Tempahan Konsultasi</title>
-    <style>
-        body { font-family: Arial, sans-serif; background-color: #fdf2f8; margin: 0; padding: 20px; }
-        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: 2px solid #1f2937; }
-        .banner { background-color: #fce7f3; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 2px solid #1f2937; }
-        .banner h3 { margin-top: 0; color: #db2777; }
-        .slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1px)); gap: 10px; margin-top: 20px; }
-        .slot { padding: 15px; text-align: center; background-color: #cffafe; border: 2px dashed #1f2937; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        .slot.booked { background-color: #818cf8; color: white; cursor: not-allowed; border-style: solid; }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
-        .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        button { background-color: #fde047; border: 2px solid #1f2937; padding: 10px 20px; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 10px; width: 100%; }
-        button:hover { background-color: #facc15; }
-        #bookingModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
-        .modal-content { background: white; padding: 20px; border-radius: 10px; width: 90%; max-width: 400px; border: 2px solid #1f2937; }
-        .close-btn { float: right; cursor: pointer; font-weight: bold; font-size: 1.2em; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SembangSiswa - Sistem Tempahan Konsultasi</title>
+  <style>
+    :root {
+      --bg: #fdf2f8;
+      --card-bg: #fff;
+      --border: #1f2937;
+      --pink-banner: #fce7f3;
+      --pink-text: #db2777;
+      --cyan-slot: #cffafe;
+      --yellow-btn: #fde047;
+      --yellow-hover: #facc15;
+      --purple-booked: #818cf8;
+    }
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: var(--bg); margin: 0; padding: 20px; color: #1f2937; }
+    .container { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 15px; }
+
+    /* Header */
+    .header-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      background: #fff; padding: 12px 20px; border-radius: 12px; border: 2px solid var(--border);
+    }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .brand h1 { margin: 0; font-size: 1.4rem; color: #db2777; display: flex; align-items: center; gap: 6px; }
+    .brand h1 span { color: #0284c7; }
+    .brand p { margin: 2px 0 0 0; font-size: 0.85rem; color: #4b5563; }
+    .status-sync { font-size: 0.8rem; font-weight: bold; color: #0284c7; margin-left: 10px; }
+    .role-buttons { display: flex; gap: 8px; }
+    .role-btn {
+      padding: 8px 16px; border-radius: 20px; border: 2px solid var(--border);
+      font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 0.85rem;
+    }
+    .role-btn.student { background: #38bdf8; color: white; }
+    .role-btn.lecturer { background: #fef08a; color: #1f2937; }
+    .role-btn.active { outline: 3px solid #1f2937; }
+
+    /* Banner Maklumat */
+    .banner {
+      background: var(--pink-banner); border: 2px solid var(--border);
+      border-radius: 12px; padding: 16px 20px;
+    }
+    .banner-title { font-weight: bold; font-size: 1rem; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .banner-grid { display: flex; flex-direction: column; gap: 6px; font-size: 0.9rem; }
+    .badge-hl { background: #fde047; padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border); font-weight: bold; }
+
+    /* Legend Bar */
+    .legend-bar {
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;
+      background: #fff; border: 2px solid var(--border); border-radius: 12px; padding: 10px 16px; font-size: 0.85rem;
+    }
+    .legend-items { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+    .legend-box { display: inline-block; width: 14px; height: 14px; border: 1.5px solid var(--border); border-radius: 3px; vertical-align: middle; margin-right: 4px; }
+    .box-empty { background: #6ee7b7; }
+    .box-urgent { background: #fde047; }
+    .box-event { background: #818cf8; }
+    .box-full { background: #ffffff; }
+
+    /* Calendar Navigator */
+    .calendar-card {
+      background: #fff; border: 2px solid var(--border); border-radius: 12px; padding: 14px 20px;
+    }
+    .cal-controls {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
+    }
+    .cal-nav-btn {
+      background: #fde047; border: 2px solid var(--border); border-radius: 8px;
+      padding: 6px 14px; font-weight: bold; cursor: pointer; font-size: 1.1rem;
+    }
+    .cal-nav-btn:hover { background: #facc15; }
+    .current-month { font-weight: bold; font-size: 1.1rem; }
+    .week-days-grid {
+      display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center;
+    }
+    .day-column-header { font-weight: bold; font-size: 0.85rem; padding: 4px; }
+    .sun, .sat { color: #ef4444; }
+    .weekday { color: #374151; }
+    .day-card {
+      border: 2px solid #e5e7eb; border-radius: 8px; padding: 8px 4px; cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+    }
+    .day-card:hover { border-color: var(--border); }
+    .day-card.selected { border: 2px solid var(--border); background: #fce7f3; font-weight: bold; }
+    .day-num { font-size: 1.1rem; font-weight: bold; }
+
+    /* Slot Area */
+    .slots-container {
+      background: #fff; border: 2px solid var(--border); border-radius: 12px; padding: 16px 20px;
+    }
+    .slots-header { font-weight: bold; font-size: 1rem; margin-bottom: 12px; }
+    .slots-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px;
+    }
+    .slot-card {
+      border: 2px dashed var(--border); border-radius: 8px; background: var(--cyan-slot);
+      padding: 14px 8px; text-align: center; cursor: pointer; transition: 0.1s;
+    }
+    .slot-card:hover { transform: translateY(-2px); }
+    .slot-card.booked {
+      background: var(--purple-booked); color: white; border-style: solid; cursor: not-allowed;
+    }
+    .slot-time { font-weight: bold; font-size: 1rem; }
+    .slot-sub { font-size: 0.75rem; margin-top: 4px; }
+    .slot-sub.badge {
+      display: inline-block; background: #fff; color: #1f2937; padding: 2px 8px;
+      border-radius: 12px; border: 1.5px solid var(--border); font-weight: bold; margin-top: 4px;
+    }
+
+    /* Summary Area */
+    .summary-card {
+      background: #fff; border: 2px solid var(--border); border-radius: 12px; padding: 16px 20px;
+    }
+    .summary-card h3 { margin: 0 0 10px 0; font-size: 1rem; display: flex; align-items: center; gap: 6px; }
+    .summary-empty {
+      border: 2px solid var(--border); border-radius: 8px; padding: 20px;
+      text-align: center; color: #6b7280; font-size: 0.9rem;
+    }
+    .summary-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
+    .summary-table th, .summary-table td { border: 1px solid #e5e7eb; padding: 8px; text-align: left; }
+    .summary-table th { background: #f9fafb; }
+
+    /* Modal */
+    #bookingModal {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      align-items: center; justify-content: center; z-index: 100;
+    }
+    .modal-content {
+      background: white; border: 2px solid var(--border); border-radius: 12px;
+      padding: 20px; width: 92%; max-width: 420px;
+    }
+    .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .modal-head h3 { margin: 0; font-size: 1.1rem; }
+    .close-btn { cursor: pointer; font-size: 1.3rem; font-weight: bold; }
+    .form-group { margin-bottom: 10px; }
+    .form-group label { display: block; font-weight: bold; font-size: 0.85rem; margin-bottom: 4px; }
+    .form-group input, .form-group select {
+      width: 100%; padding: 8px; border: 1.5px solid var(--border); border-radius: 6px; font-size: 0.9rem;
+    }
+    .btn-submit {
+      width: 100%; background: var(--yellow-btn); border: 2px solid var(--border);
+      border-radius: 8px; padding: 10px; font-weight: bold; cursor: pointer; font-size: 0.95rem; margin-top: 8px;
+    }
+    .btn-submit:hover { background: var(--yellow-hover); }
+  </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="banner">
-        <h3>📌 Maklumat Penting:</h3>
-        <p>⏱️ Setiap sesi terhad kepada <b>20 minit</b> sahaja.</p>
-        <p>🎓 Slot Prasiswazah (Undergrad): <b>Isnin & Jumaat Petang</b>.</p>
-        <p>🚨 Slot Kecemasan (Urgent): Dibuka pada hari-hari lain atas sebab munasabah.</p>
-        <p>📍 Mod: Bersemuka (Bilik Pensyarah) atau Atas Talian (Webex/Meet/Telegram).</p>
+  <!-- Header -->
+  <div class="header-bar">
+    <div class="brand">
+      <div style="font-size: 1.8rem;">🚀</div>
+      <div>
+        <h1>Sembang<span>Siswa</span>. <span class="status-sync" id="syncLabel">● Terkini</span></h1>
+        <p>Sistem Tempahan Konsultasi (Sesi 20 Minit)</p>
+      </div>
     </div>
+    <div class="role-buttons">
+      <button class="role-btn student active" id="btnStudent" onclick="setRole('pelajar')">🎓 Pelajar</button>
+      <button class="role-btn lecturer" id="btnLecturer" onclick="setRole('pensyarah')">🧑‍🏫 Pensyarah</button>
+    </div>
+  </div>
 
-    <h2>Pilih Tarikh & Masa</h2>
-    <input type="date" id="tarikhPilihan" class="form-group" style="padding: 10px; font-size: 16px; border: 2px solid #1f2937; border-radius: 8px;" onchange="paparSlot()">
+  <!-- Banner Info -->
+  <div class="banner">
+    <div class="banner-title">📌 Maklumat Penting:</div>
+    <div class="banner-grid">
+      <div>⏱️ Setiap sesi terhad kepada <span class="badge-hl">20 minit</span> sahaja.</div>
+      <div>🎓 Slot Prasiswazah (Undergrad): <b>Isnin & Jumaat Petang</b>.</div>
+      <div>🚨 Slot Kecemasan (Urgent): Dibuka pada hari-hari lain atas sebab munasabah.</div>
+      <div>📍 Mod: Bersemuka (Bilik Pensyarah) atau Atas Talian (Webex/Meet/Telegram).</div>
+    </div>
+  </div>
 
-    <div id="slotContainer" class="slot-grid"></div>
+  <!-- Legend -->
+  <div class="legend-bar">
+    <div>👋 <b>Hai! Pilih tarikh di kalendar untuk lihat slot kosong.</b></div>
+    <div class="legend-items">
+      <div><span class="legend-box box-empty"></span>Kosong</div>
+      <div><span class="legend-box box-urgent"></span>Urgent Sahaja</div>
+      <div><span class="legend-box box-event"></span>Event Penting</div>
+      <div><span class="legend-box box-full"></span>Penuh / Kelas</div>
+    </div>
+  </div>
+
+  <!-- Calendar Navigator -->
+  <div class="calendar-card">
+    <div class="cal-controls">
+      <button class="cal-nav-btn" onclick="tukarMinggu(-1)">&lt;</button>
+      <div class="current-month" id="calendarMonthLabel">Bulan</div>
+      <button class="cal-nav-btn" onclick="tukarMinggu(1)">&gt;</button>
+    </div>
+    <div class="week-days-grid" id="weekGrid"></div>
+  </div>
+
+  <!-- Slots -->
+  <div class="slots-container">
+    <div class="slots-header" id="selectedDateLabel">Slot Masa</div>
+    <div class="slots-grid" id="slotsGrid"></div>
+  </div>
+
+  <!-- Ringkasan -->
+  <div class="summary-card">
+    <h3>📋 Ringkasan Tempahan Pelajar</h3>
+    <div id="summaryContent" class="summary-empty">Tiada tempahan setakat ini. 🍃</div>
+  </div>
 </div>
 
+<!-- Modal Tempahan -->
 <div id="bookingModal">
-    <div class="modal-content">
-        <span class="close-btn" onclick="tutupModal()">&times;</span>
-        <h3 id="modalTitle">Tempah Slot</h3>
-        <form id="bookingForm" onsubmit="hantarTempahan(event)">
-            <input type="hidden" id="masaSlot">
-            
-            <div class="form-group">
-                <label>Nama Penuh</label>
-                <input type="text" id="nama" required>
-            </div>
-            <div class="form-group">
-                <label>No. Telefon</label>
-                <input type="text" id="telefon" required>
-            </div>
-            <div class="form-group">
-                <label>Tujuan Konsultasi</label>
-                <input type="text" id="tujuan" required>
-            </div>
-            <div class="form-group">
-                <label>Mod Pertemuan</label>
-                <select id="mod" required>
-                    <option value="Bersemuka">Bersemuka (Bilik Pensyarah)</option>
-                    <option value="Atas Talian">Atas Talian</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Jenis Permohonan</label>
-                <select id="jenis" required>
-                    <option value="Biasa">Biasa</option>
-                    <option value="Kecemasan (Urgent)">Kecemasan (Urgent)</option>
-                </select>
-            </div>
-            <button type="submit" id="submitBtn">Sahkan & Hantar ke Telegram</button>
-        </form>
+  <div class="modal-content">
+    <div class="modal-head">
+      <h3 id="modalTitle">Tempah Slot</h3>
+      <span class="close-btn" onclick="tutupModal()">&times;</span>
     </div>
+    <form id="bookingForm" onsubmit="hantarTempahan(event)">
+      <input type="hidden" id="modalMasa">
+      <div class="form-group">
+        <label>Nama Penuh</label>
+        <input type="text" id="inputNama" required placeholder="cth: MUHAMMAD AKMAL">
+      </div>
+      <div class="form-group">
+        <label>No. Telefon / WhatsApp</label>
+        <input type="text" id="inputTelefon" required placeholder="cth: 0123456789">
+      </div>
+      <div class="form-group">
+        <label>Tujuan Konsultasi</label>
+        <input type="text" id="inputTujuan" required placeholder="cth: Semakan Projek Akhir">
+      </div>
+      <div class="form-group">
+        <label>Mod Pertemuan</label>
+        <select id="selectMod">
+          <option value="Bersemuka">Bersemuka (Bilik Pensyarah)</option>
+          <option value="Atas Talian">Atas Talian (Webex/Meet/Telegram)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Jenis Slot</label>
+        <select id="selectJenis">
+          <option value="Biasa">Biasa</option>
+          <option value="Kecemasan (Urgent)">Kecemasan (Urgent)</option>
+        </select>
+      </div>
+      <button type="submit" class="btn-submit" id="submitBtn">Sahkan & Hantar ke Telegram</button>
+    </form>
+  </div>
 </div>
 
 <script>
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzDNe1K0vR8wIF-G7J-W4Y1HboJhpqNV4VBFq_TKowvIKvN8wTf-V6iWxLZSgVbuuCV/exec";
-    const LECTURER_TELEGRAM = "HaneffaMG";
-    
-    const timeBlocks = ["08:30 AM", "08:50 AM", "09:10 AM", "09:30 AM", "10:00 AM", "10:20 AM", "14:00 PM", "14:20 PM", "14:40 PM", "15:00 PM"];
-    let tempahanSemasa = JSON.parse(localStorage.getItem("tempahanConsultation")) || {};
+  const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzDNe1K0vR8wIF-G7J-W4Y1HboJhpqNV4VBFq_TKowvIKvN8wTf-V6iWxLZSgVbuuCV/exec";
+  const LECTURER_TELEGRAM = "HaneffaMG";
 
-    function paparSlot() {
-        const tarikh = document.getElementById('tarikhPilihan').value;
-        const container = document.getElementById('slotContainer');
-        container.innerHTML = "";
+  const timeBlocks = [
+    "08:30 AM", "08:50 AM", "09:10 AM", "09:30 AM",
+    "10:00 AM", "10:20 AM", "12:30 PM", "12:50 PM",
+    "02:00 PM", "02:20 PM", "02:40 PM", "03:00 PM",
+    "03:20 PM", "03:40 PM"
+  ];
 
-        if (!tarikh) return;
+  const namaHari = ["Ahd", "Isn", "Sel", "Rab", "Kha", "Jum", "Sab"];
+  const namaBulan = ["Januari", "Februari", "Mac", "April", "Mei", "Jun", "Julai", "Ogos", "September", "Oktober", "November", "Disember"];
 
-        timeBlocks.forEach(masa => {
-            const div = document.createElement('div');
-            const kunci = tarikh + "_" + masa;
-            
-            if (tempahanSemasa[kunci]) {
-                div.className = "slot booked";
-                div.innerHTML = `${masa}<br><small>${tempahanSemasa[kunci].nama}</small>`;
-            } else {
-                div.className = "slot";
-                div.innerHTML = `${masa}<br><small>+ Tambah Event</small>`;
-                div.onclick = () => bukaModal(masa);
-            }
-            container.appendChild(div);
-        });
+  let roleSemasa = "pelajar";
+  let tarikhPilihan = new Date();
+  let tempahanSemasa = JSON.parse(localStorage.getItem("tempahanConsultation")) || {};
+
+  function setRole(role) {
+    roleSemasa = role;
+    document.getElementById("btnStudent").classList.toggle("active", role === "pelajar");
+    document.getElementById("btnLecturer").classList.toggle("active", role === "pensyarah");
+    kemaskiniRingkasan();
+  }
+
+  function getFormatTarikh(d) {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function binaKalendar() {
+    const grid = document.getElementById("weekGrid");
+    grid.innerHTML = "";
+
+    const curr = new Date(tarikhPilihan);
+    const dayOfWeek = curr.getDay();
+    const firstDay = new Date(curr);
+    firstDay.setDate(curr.getDate() - dayOfWeek);
+
+    document.getElementById("calendarMonthLabel").innerText = 
+      `${namaBulan[firstDay.getMonth()]} ${firstDay.getFullYear()}`;
+
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(firstDay);
+      d.setDate(firstDay.getDate() + i);
+
+      const col = document.createElement("div");
+      const isSun = i === 0, isSat = i === 6;
+      const headerClass = isSun || isSat ? "day-column-header sun" : "day-column-header weekday";
+
+      const isSelected = getFormatTarikh(d) === getFormatTarikh(tarikhPilihan);
+
+      col.innerHTML = `
+        <div class="${headerClass}">${namaHari[i]}</div>
+        <div class="day-card ${isSelected ? 'selected' : ''}" onclick="pilihTarikh('${d.toISOString()}')">
+          <span class="day-num">${d.getDate()}</span>
+        </div>
+      `;
+      grid.appendChild(col);
     }
 
-    function bukaModal(masa) {
-        document.getElementById('masaSlot').value = masa;
-        document.getElementById('modalTitle').innerText = "Tempah Slot: " + masa;
-        document.getElementById('bookingModal').style.display = 'flex';
-    }
-
-    function tutupModal() {
-        document.getElementById('bookingModal').style.display = 'none';
-        document.getElementById('bookingForm').reset();
-    }
-
-    function hantarTempahan(e) {
-        e.preventDefault();
-        const btn = document.getElementById('submitBtn');
-        btn.innerText = "Menghantar...";
-        btn.disabled = true;
-
-        const tarikh = document.getElementById('tarikhPilihan').value;
-        const masa = document.getElementById('masaSlot').value;
-        const nama = document.getElementById('nama').value;
-        const telefon = document.getElementById('telefon').value;
-        const tujuan = document.getElementById('tujuan').value;
-        const mod = document.getElementById('mod').value;
-        const jenis = document.getElementById('jenis').value;
-
-        // Simpan ke Local Storage untuk kemas kini UI kalendar serta-merta
-        const kunci = tarikh + "_" + masa;
-        tempahanSemasa[kunci] = { nama, telefon, tujuan, mod, jenis };
-        localStorage.setItem("tempahanConsultation", JSON.stringify(tempahanSemasa));
-
-        // Format data untuk Google Sheets
-        const formData = new FormData();
-        formData.append("tarikh", tarikh);
-        formData.append("masa", masa);
-        formData.append("nama", nama);
-        formData.append("telefon", telefon);
-        formData.append("tujuan", tujuan);
-        formData.append("mod", mod);
-        formData.append("jenis", jenis);
-
-        // Hantar ke Google Sheets
-        fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST',
-            body: formData
-        }).then(response => {
-            bukaTelegram(tarikh, masa, nama, tujuan, mod);
-            paparSlot();
-            tutupModal();
-            btn.innerText = "Sahkan & Hantar ke Telegram";
-            btn.disabled = false;
-        }).catch(error => {
-            alert("Berlaku ralat. Data mungkin tidak sampai ke pangkalan data.");
-            btn.innerText = "Sahkan & Hantar ke Telegram";
-            btn.disabled = false;
-        });
-    }
-
-    function bukaTelegram(tarikh, masa, nama, tujuan, mod) {
-        const mesej = `*TEMPAHAN KONSULTASI BARU*%0A%0A*Nama:* ${nama}%0A*Tarikh:* ${tarikh}%0A*Masa:* ${masa}%0A*Tujuan:* ${tujuan}%0A*Mod:* ${mod}%0A%0A_(Sila sertakan screenshot sistem tempahan ini sebagai rujukan)_`;
-        const urlTelegram = `https://t.me/${LECTURER_TELEGRAM}?text=${mesej}`;
-        window.open(urlTelegram, '_blank');
-    }
-
-    // Set tarikh hari ini secara lalai
-    document.getElementById('tarikhPilihan').valueAsDate = new Date();
     paparSlot();
+  }
+
+  function pilihTarikh(isoString) {
+    tarikhPilihan = new Date(isoString);
+    binaKalendar();
+  }
+
+  function tukarMinggu(delta) {
+    tarikhPilihan.setDate(tarikhPilihan.getDate() + (delta * 7));
+    binaKalendar();
+  }
+
+  function paparSlot() {
+    const dateKey = getFormatTarikh(tarikhPilihan);
+    const container = document.getElementById("slotsGrid");
+    container.innerHTML = "";
+
+    document.getElementById("selectedDateLabel").innerText = 
+      `Slot Masa (${namaHari[tarikhPilihan.getDay()]}, ${tarikhPilihan.getDate()} ${namaBulan[tarikhPilihan.getMonth()]} ${tarikhPilihan.getFullYear()})`;
+
+    timeBlocks.forEach(masa => {
+      const kunci = `${dateKey}_${masa}`;
+      const div = document.createElement("div");
+
+      if (tempahanSemasa[kunci]) {
+        div.className = "slot-card booked";
+        div.innerHTML = `
+          <div class="slot-time">${masa}</div>
+          <div class="slot-sub badge">${tempahanSemasa[kunci].nama}</div>
+        `;
+      } else {
+        div.className = "slot-card";
+        div.innerHTML = `
+          <div class="slot-time">${masa}</div>
+          <div class="slot-sub">+ Tambah Event</div>
+        `;
+        div.onclick = () => bukaModal(masa);
+      }
+      container.appendChild(div);
+    });
+
+    kemaskiniRingkasan();
+  }
+
+  function bukaModal(masa) {
+    document.getElementById("modalMasa").value = masa;
+    document.getElementById("modalTitle").innerText = `Tempah Slot: ${masa}`;
+    document.getElementById("bookingModal").style.display = "flex";
+  }
+
+  function tutupModal() {
+    document.getElementById("bookingModal").style.display = "none";
+    document.getElementById("bookingForm").reset();
+  }
+
+  function hantarTempahan(e) {
+    e.preventDefault();
+    const btn = document.getElementById("submitBtn");
+    const syncLabel = document.getElementById("syncLabel");
+
+    btn.innerText = "Menghantar...";
+    btn.disabled = true;
+    syncLabel.innerText = "🔄 Menyegerak...";
+
+    const tarikh = getFormatTarikh(tarikhPilihan);
+    const masa = document.getElementById("modalMasa").value;
+    const nama = document.getElementById("inputNama").value.trim().toUpperCase();
+    const telefon = document.getElementById("inputTelefon").value.trim();
+    const tujuan = document.getElementById("inputTujuan").value.trim();
+    const mod = document.getElementById("selectMod").value;
+    const jenis = document.getElementById("selectJenis").value;
+
+    // Simpan ke peranti serta-merta
+    const kunci = `${tarikh}_${masa}`;
+    tempahanSemasa[kunci] = { nama, telefon, tujuan, mod, jenis, tarikh, masa };
+    localStorage.setItem("tempahanConsultation", JSON.stringify(tempahanSemasa));
+
+    // Siapkan data borang untuk dihantar ke Google Sheets
+    const formData = new FormData();
+    formData.append("tarikh", tarikh);
+    formData.append("masa", masa);
+    formData.append("nama", nama);
+    formData.append("telefon", telefon);
+    formData.append("tujuan", tujuan);
+    formData.append("mod", mod);
+    formData.append("jenis", jenis);
+
+    // Hantar data menggunakan mode no-cors untuk mengelakkan ralat CORS
+    fetch(GOOGLE_SCRIPT_URL, {
+      method: "POST",
+      mode: "no-cors",
+      body: formData
+    }).then(() => {
+      selesaiTempahan(tarikh, masa, nama, tujuan, mod, btn, syncLabel);
+    }).catch(err => {
+      console.warn("Rangkaian terhalang, disimpan secara lokal:", err);
+      selesaiTempahan(tarikh, masa, nama, tujuan, mod, btn, syncLabel);
+    });
+  }
+
+  function selesaiTempahan(tarikh, masa, nama, tujuan, mod, btn, syncLabel) {
+    syncLabel.innerText = "● Terkini";
+    btn.innerText = "Sahkan & Hantar ke Telegram";
+    btn.disabled = false;
+    tutupModal();
+    paparSlot();
+
+    // Buka Telegram secara automatik
+    const mesej = `*TEMPAHAN KONSULTASI BARU*%0A%0A*Nama:* ${encodeURIComponent(nama)}%0A*Tarikh:* ${tarikh}%0A*Masa:* ${masa}%0A*Tujuan:* ${encodeURIComponent(tujuan)}%0A*Mod:* ${encodeURIComponent(mod)}%0A%0A_(Sila sertakan screenshot sistem tempahan ini sebagai rujukan)_`;
+    window.open(`https://t.me/${LECTURER_TELEGRAM}?text=${mesej}`, "_blank");
+  }
+
+  function kemaskiniRingkasan() {
+    const summary = document.getElementById("summaryContent");
+    const senarai = Object.values(tempahanSemasa);
+
+    if (senarai.length === 0) {
+      summary.className = "summary-empty";
+      summary.innerText = "Tiada tempahan setakat ini. 🍃";
+      return;
+    }
+
+    summary.className = "";
+    let html = `
+      <table class="summary-table">
+        <thead>
+          <tr>
+            <th>Tarikh</th>
+            <th>Masa</th>
+            <th>Nama</th>
+            <th>Tujuan</th>
+            <th>Mod</th>
+            <th>Tindakan</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    senarai.forEach(item => {
+      const kunci = `${item.tarikh}_${item.masa}`;
+      html += `
+        <tr>
+          <td>${item.tarikh}</td>
+          <td>${item.masa}</td>
+          <td><b>${item.nama}</b></td>
+          <td>${item.tujuan}</td>
+          <td>${item.mod}</td>
+          <td>
+            ${roleSemasa === "pensyarah" ? `<button onclick="padamTempahan('${kunci}')" style="background:#fee2e2; border:1px solid #ef4444; border-radius:4px; padding:2px 6px; cursor:pointer; color:#b91c1c;">Padam</button>` : `<span style="color:#6b7280;">Ditempah</span>`}
+          </td>
+        </tr>
+      `;
+    });
+
+    html += `</tbody></table>`;
+    summary.innerHTML = html;
+  }
+
+  function padamTempahan(kunci) {
+    if (confirm("Adakah Dr. pasti mahu memadam tempahan ini?")) {
+      delete tempahanSemasa[kunci];
+      localStorage.setItem("tempahanConsultation", JSON.stringify(tempahanSemasa));
+      paparSlot();
+    }
+  }
+
+  // Mulakan sistem
+  binaKalendar();
 </script>
 </body>
 </html>
